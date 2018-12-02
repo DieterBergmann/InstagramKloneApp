@@ -7,8 +7,10 @@
 //
 
 import UIKit
+import FirebaseAuth
+import FirebaseDatabase
 
-class RegistrationViewController: UIViewController {
+class RegistrationViewController: UIViewController,UIImagePickerControllerDelegate, UINavigationControllerDelegate {
     
     // MARK: - Outlets
     @IBOutlet weak var profilImageView: UIImageView!
@@ -25,6 +27,7 @@ class RegistrationViewController: UIViewController {
 
         setupView()
         addTargetToTextField()
+        addTapGestureToImageView()
         
     }
     
@@ -66,7 +69,7 @@ class RegistrationViewController: UIViewController {
     }
     
     @objc func textFieldDidChange() {
-        let isText = usernameTextField.text?.count ?? 0 > 0 && emailTextField.text?.count ?? 0 > 0 && passwordTextField.text?.count ?? 0 > 0
+        let isText = (usernameTextField.text?.count ?? 0) > 0 && (emailTextField.text?.count ?? 0) > 0 && (passwordTextField.text?.count ?? 0) > 0
         
         if isText {
             createAccountButton.backgroundColor = UIColor(white: 1.0, alpha: 0.8)
@@ -82,7 +85,53 @@ class RegistrationViewController: UIViewController {
     
     // MARK: - Action
     @IBAction func createButtonTapped(_ sender: UIButton) {
-        print("Account erstellt")
+        
+        Auth.auth().createUser(withEmail: emailTextField.text!, password: passwordTextField.text!) { (data, error) in
+            if let err = error {
+                print(err.localizedDescription)
+                return
+            } else {
+                print("User mit email: \(data?.user.email ?? "")")
+                
+                guard let newUser = data?.user else { return }
+                let uid = newUser.uid
+                
+                // Ermittlung Datenbankadresse und hinzufügen des users und der id
+                let ref = Database.database().reference().child("users").child(uid)
+                print("Datenbankadresse: ", ref)
+                
+                // Daten hinzufügen über ein Dictionary
+                ref.setValue(["username" : self.usernameTextField.text!, "email" : self.emailTextField.text!])
+            }
+        }
+
+    }
+    
+    // MARK: - Choose Photo
+    func addTapGestureToImageView() {
+        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(handleSelectProfilPhoto))
+        
+        profilImageView.addGestureRecognizer(tapGesture)
+        profilImageView.isUserInteractionEnabled = true
+    }
+    
+    @objc func handleSelectProfilPhoto() {
+        let pickerController = UIImagePickerController()
+        pickerController.delegate = self
+        pickerController.allowsEditing = true
+        present(pickerController, animated: true, completion: nil)
+    }
+    
+    func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        if let editImage = info[.editedImage] as? UIImage {
+            profilImageView.image = editImage
+            print("editImage")
+        } else if let originalImage = info[.originalImage] as? UIImage {
+            profilImageView.image = originalImage
+            print("originalImage")
+        }
+        
+        dismiss(animated: true, completion: nil)
     }
     
 
